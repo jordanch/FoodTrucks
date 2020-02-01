@@ -9,37 +9,41 @@ es = Elasticsearch(host='es')
 
 app = Flask(__name__)
 
+
 def load_data_in_es():
     """ creates an index in elasticsearch """
     url = "http://data.sfgov.org/resource/rqzj-sfat.json"
     r = requests.get(url)
     data = r.json()
-    print "Loading data in elasticsearch ..."
+    print("Loading data in elasticsearch ...")
     for id, truck in enumerate(data):
         res = es.index(index="sfdata", doc_type="truck", id=id, body=truck)
-    print "Total trucks loaded: ", len(data)
+    print("Total trucks loaded: ", len(data))
+
 
 def safe_check_index(index, retry=3):
     """ connect to ES with retry """
     if not retry:
-        print "Out of retries. Bailing out..."
+        print("Out of retries. Bailing out...")
         sys.exit(1)
     try:
         status = es.indices.exists(index)
         return status
     except exceptions.ConnectionError as e:
-        print "Unable to connect to ES. Retrying in 5 secs..."
+        print("Unable to connect to ES. Retrying in 5 secs...")
         time.sleep(5)
         safe_check_index(index, retry-1)
+
 
 def format_fooditems(string):
     items = [x.strip().lower() for x in string.split(":")]
     return items[1:] if items[0].find("cold truck") > -1 else items
 
+
 def check_and_load_index():
     """ checks if index exits and loads the data accordingly """
     if not safe_check_index('sfdata'):
-        print "Index not found..."
+        print("Index not found...")
         load_data_in_es()
 
 ###########
@@ -48,6 +52,7 @@ def check_and_load_index():
 @app.route('/')
 def index():
     return render_template('index.html')
+
 
 @app.route('/debug')
 def test_es():
@@ -61,6 +66,7 @@ def test_es():
         resp["msg"] = "Unable to reach ES"
     return jsonify(resp)
 
+
 @app.route('/search')
 def search():
     key = request.args.get('q')
@@ -71,11 +77,11 @@ def search():
         })
     try:
         res = es.search(
-                index="sfdata",
-                body={
-                    "query": {"match": {"fooditems": key}},
-                    "size": 750 # max document size
-              })
+            index="sfdata",
+            body={
+                "query": {"match": {"fooditems": key}},
+                "size": 750  # max document size
+            })
     except Exception as e:
         return jsonify({
             "status": "failure",
@@ -89,10 +95,10 @@ def search():
         applicant = r["_source"]["applicant"]
         if "location" in r["_source"]:
             truck = {
-                "hours"    : r["_source"].get("dayshours", "NA"),
-                "schedule" : r["_source"].get("schedule", "NA"),
-                "address"  : r["_source"].get("address", "NA"),
-                "location" : r["_source"]["location"]
+                "hours": r["_source"].get("dayshours", "NA"),
+                "schedule": r["_source"].get("schedule", "NA"),
+                "address": r["_source"].get("address", "NA"),
+                "location": r["_source"]["location"]
             }
             fooditems[applicant] = r["_source"]["fooditems"]
             temp[applicant].append(truck)
@@ -115,6 +121,7 @@ def search():
         "locations": locations,
         "status": "success"
     })
+
 
 if __name__ == "__main__":
     ENVIRONMENT_DEBUG = os.environ.get("DEBUG", False)

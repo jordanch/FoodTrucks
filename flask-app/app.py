@@ -88,8 +88,11 @@ def search():
             "msg": "error in reaching elasticsearch"
         })
     # filtering results
+    # set of applications
     vendors = set([x["_source"]["applicant"] for x in res["hits"]["hits"]])
+    # a dict of applications -> trucks
     temp = {v: [] for v in vendors}
+    # a dict of applicants -> "food"
     fooditems = {v: "" for v in vendors}
     for r in res["hits"]["hits"]:
         applicant = r["_source"]["applicant"]
